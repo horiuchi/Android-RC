@@ -74,17 +74,21 @@ class PeerConnection(private val options: ConnectOptions) {
         }
     }
 
+    private fun send(action: Models) {
+        Log.i(TAG, "On Send Action: $action")
+        socket?.send(toJson(action))
+    }
+
     private fun register() {
         state.registering()
-        val action = Models.RegisterAction(roomId = options.roomId, clientId = options.clientId)
-        socket?.send(toJson(action))
+        send(Models.RegisterAction(roomId = options.roomId, clientId = options.clientId))
+        options.onOpened()
     }
 
     private fun offerOrWait(accept: Models.AcceptEvent) {
         if (accept.isExistClient) {
             state.connecting()
-            val action = Models.OfferAction(sdp = options.getSdp())
-            socket?.send(toJson(action))
+            send(Models.OfferAction(sdp = options.getSdp()))
         } else {
             state.waitPartner()
         }
@@ -92,8 +96,7 @@ class PeerConnection(private val options: ConnectOptions) {
 
     private fun answer(offer: Models.OfferAction) {
         state.connected()
-        val action = Models.AnswerEvent(sdp = options.getSdp())
-        socket?.send(toJson(action))
+        send(Models.AnswerEvent(sdp = options.getSdp()))
         options.onConnected(offer.sdp)
     }
 
@@ -107,13 +110,11 @@ class PeerConnection(private val options: ConnectOptions) {
     }
 
     private fun pong() {
-        val action = Models.PongEvent()
-        socket?.send(toJson(action))
+        send(Models.PongEvent())
     }
 
     fun sendCandidate(data: Models.IceData) {
-        val action = Models.CandidateData(ice = data)
-        socket?.send(toJson(action))
+        send(Models.CandidateData(ice = data))
     }
 
     fun close(code: Int = 1000, reason: String? = null) {
@@ -149,6 +150,7 @@ data class ConnectOptions(
     val clientId: String,
     val getSdp: () -> String,
 
+    val onOpened: () -> Unit,
     val onConnected: (sdp: String) -> Unit,
     val onCandidate: (action: Models.IceData) -> Unit,
     val onClosed: () -> Unit
@@ -209,6 +211,7 @@ class ConnectionState {
 
     private fun changeState(newState: State) {
         Log.i(TAG, "Change State: $state -> $newState")
+        state = newState
     }
 }
 
