@@ -1,7 +1,10 @@
 package com.example.capture_sender
 
+import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.view.View
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,9 +12,13 @@ import com.example.capture_sender.api.ConnectOptions
 import com.example.capture_sender.api.Models
 import com.example.capture_sender.api.PeerConnection
 import kotlinx.coroutines.launch
+import org.webrtc.PeerConnectionFactory
+import org.webrtc.VideoCapturer
 
-class MainViewModel(private val context: Context) : ViewModel() {
+class MainViewModel(app: Application) : AndroidViewModel(app) {
     private lateinit var preferences: Preferences
+    private lateinit var capturer: VideoCapturer
+    private lateinit var factory: PeerConnectionFactory
     private var conn: PeerConnection? = null
     private var clientId: String? = null
 
@@ -20,11 +27,26 @@ class MainViewModel(private val context: Context) : ViewModel() {
     val fabDisconnectVisibility = MutableLiveData<Int>()
 
     fun initialize() {
-        preferences = Preferences(context)
+        preferences = Preferences(getApplication())
         preferences.initializeRoomId()
 
-        fabConnectVisibility.value = toVisibility(true)
+        fabConnectVisibility.value = toVisibility(false)
         fabDisconnectVisibility.value = toVisibility(false)
+    }
+
+    fun setUp(vc: VideoCapturer) {
+        capturer = vc
+        PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(getApplication()).createInitializationOptions())
+        factory = PeerConnectionFactory.builder().createPeerConnectionFactory()
+
+        fabConnectVisibility.value = toVisibility(true)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+
+        factory?.dispose()
+        conn?.close()
     }
 
     fun onClickConnect() {
