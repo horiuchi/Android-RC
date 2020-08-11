@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.media.projection.MediaProjection.Callback
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
@@ -22,13 +23,15 @@ import org.webrtc.ScreenCapturerAndroid
 class MainActivity : AppCompatActivity() {
     private val TAG = MainActivity::class.java.simpleName
 
+    private val SCREEN_RESOLUTION_SCALE = 2
     private val REQUEST_MEDIA_PROJECTION = 1001
     private val REQUEST_MULTI_PERMISSION = 1002
     private val STREAM_NAME_PREFIX = "android_device_stream"
     private val MANDATORY_PERMISSIONS = arrayOf(
+        Manifest.permission.FOREGROUND_SERVICE,
+        Manifest.permission.INTERNET,
         Manifest.permission.MODIFY_AUDIO_SETTINGS,
-        Manifest.permission.RECORD_AUDIO,
-        Manifest.permission.INTERNET
+        Manifest.permission.RECORD_AUDIO
     )
 
     private val vm by lazy {
@@ -47,9 +50,15 @@ class MainActivity : AppCompatActivity() {
         vm.initialize()
         observeViewModel()
         fab_connect.setOnClickListener {
+            var captureService = Intent(application, ScreenCaptureService::class.java)
+            startForegroundService(captureService)
+
             vm.onClickConnect()
         }
         fab_disconnect.setOnClickListener {
+            var captureService = Intent(application, ScreenCaptureService::class.java)
+            stopService(captureService)
+
             vm.onClickDisconnect()
         }
 
@@ -111,7 +120,16 @@ class MainActivity : AppCompatActivity() {
                     reportMessage("User revoked permission to capture the screen.");
                 }
             })
-            vm.setUp(capturer)
+
+            val metrics = DisplayMetrics()
+            windowManager.defaultDisplay.getRealMetrics(metrics)
+            vm.setUp(
+                capturer, MainViewModel.Parameters(
+                    width = metrics.widthPixels / SCREEN_RESOLUTION_SCALE,
+                    height = metrics.heightPixels / SCREEN_RESOLUTION_SCALE,
+                    fps = 0
+                )
+            )
         }
     }
 

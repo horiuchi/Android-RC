@@ -3,6 +3,7 @@ package com.example.capture_sender
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.util.DisplayMetrics
 import android.view.View
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
@@ -17,8 +18,7 @@ import org.webrtc.VideoCapturer
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private lateinit var preferences: Preferences
-    private lateinit var capturer: VideoCapturer
-    private lateinit var factory: PeerConnectionFactory
+    private lateinit var model: ScreenCaptureModel
     private var conn: PeerConnection? = null
     private var clientId: String? = null
 
@@ -34,10 +34,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         fabDisconnectVisibility.value = toVisibility(false)
     }
 
-    fun setUp(vc: VideoCapturer) {
-        capturer = vc
-        PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(getApplication()).createInitializationOptions())
-        factory = PeerConnectionFactory.builder().createPeerConnectionFactory()
+    fun setUp(vc: VideoCapturer, params: Parameters) {
+        model = ScreenCaptureModel(vc, params)
+        model.initialize(getApplication())
 
         fabConnectVisibility.value = toVisibility(true)
     }
@@ -45,7 +44,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     override fun onCleared() {
         super.onCleared()
 
-        factory?.dispose()
+        model?.dispose()
         conn?.close()
     }
 
@@ -131,4 +130,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun toVisibility(b: Boolean): Int {
         return if (b) View.VISIBLE else View.INVISIBLE
     }
+
+    data class Parameters(
+        val width: Int,
+        val height: Int,
+        val fps: Int
+    )
 }
