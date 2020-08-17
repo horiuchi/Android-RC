@@ -4,10 +4,13 @@ import android.util.Log
 import okhttp3.*
 import java.time.Duration
 
-val Timeout: Duration = Duration.ofSeconds(10)
 
-class PeerConnection(private val options: ConnectOptions) {
-    private val TAG = PeerConnection::class.java.simpleName
+class WebSocketClient(private val options: ConnectOptions, private val events: WebSocketEvents) {
+    private val TAG = WebSocketClient::class.java.simpleName
+
+    companion object {
+        val Timeout: Duration = Duration.ofSeconds(10)
+    }
 
     private val state = ConnectionState()
     private var socket: WebSocket? = null
@@ -30,7 +33,7 @@ class PeerConnection(private val options: ConnectOptions) {
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             Log.w(TAG, "On Failure Event: $response, $t")
-            closeSocket()
+            closeSocket(t)
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
@@ -82,7 +85,7 @@ class PeerConnection(private val options: ConnectOptions) {
     private fun register() {
         state.registering()
         send(Models.RegisterAction(roomId = options.roomId, clientId = options.clientId))
-        options.onOpened()
+        events.onOpened()
     }
 
     private fun offerOrWait(accept: Models.AcceptEvent) {
@@ -97,16 +100,16 @@ class PeerConnection(private val options: ConnectOptions) {
     private fun answer(offer: Models.OfferAction) {
         state.connected()
         send(Models.AnswerEvent(sdp = options.getSdp()))
-        options.onConnected(offer.sdp)
+        events.onConnected(offer.sdp)
     }
 
     private fun connected(answer: Models.AnswerEvent) {
         state.connected()
-        options.onConnected(answer.sdp)
+        events.onConnected(answer.sdp)
     }
 
     private fun candidate(data: Models.CandidateData) {
-        options.onCandidate(data.ice)
+        events.onCandidate(data.ice)
     }
 
     private fun pong() {
@@ -122,10 +125,14 @@ class PeerConnection(private val options: ConnectOptions) {
         closeSocket()
     }
 
-    private fun closeSocket() {
+    private fun closeSocket(t: Throwable? = null) {
         socket = null
         state.closed()
-        options.onClosed()
+        if (t != null) {
+            events.onFailure(t)
+        } else {
+            events.onClosed()
+        }
     }
 
     init {
@@ -148,65 +155,68 @@ data class ConnectOptions(
     val wsUrl: String,
     val roomId: String,
     val clientId: String,
-    val getSdp: () -> String,
-
-    val onOpened: () -> Unit,
-    val onConnected: (sdp: String) -> Unit,
-    val onCandidate: (action: Models.IceData) -> Unit,
-    val onClosed: () -> Unit
+    val getSdp: () -> String
 )
+
+interface WebSocketEvents {
+    fun onOpened()
+    fun onConnected(sdp: String)
+    fun onCandidate(action: Models.IceData)
+    fun onClosed()
+    fun onFailure(t: Throwable)
+}
 
 class ConnectionState {
     private val TAG = ConnectionState::class.java.simpleName
 
     private enum class State {
-        open,
-        registering,
-        waitPartner,
-        connecting,
-        connected,
-        closed,
+        OPEN,
+        REGISTERING,
+        WAIT_PARTNER,
+        CONNECTING,
+        CONNECTED,
+        CLOSED,
     }
 
-    private var state = State.closed
+    private var state = State.CLOSED
 
     fun open() {
-        if (state != State.closed) {
+        if (state != State.CLOSED) {
             throw IllegalStateException("Can not change state to `open`. Now state is not `closed`.")
         }
-        changeState(State.open)
+        changeState(State.OPEN)
     }
 
     fun registering() {
-        if (state != State.open) {
+        if (state != State.OPEN) {
             throw IllegalStateException("Can not change state to `registering`. Now state is not `open`.")
         }
-        changeState(State.registering)
+        changeState(State.REGISTERING)
     }
 
     fun waitPartner() {
-        if (state != State.registering) {
+        if (state != State.REGISTERING) {
             throw IllegalStateException("Can not change state to `waitPartner`. Now state is not `registering`.")
         }
-        changeState(State.waitPartner)
+        changeState(State.WAIT_PARTNER)
     }
 
     fun connecting() {
-        if (state != State.registering) {
+        if (state != State.REGISTERING) {
             throw IllegalStateException("Can not change state to `connecting`. Now state is not `registering`.")
         }
-        changeState(State.connecting)
+        changeState(State.CONNECTING)
     }
 
     fun connected() {
-        if (state != State.connecting || state != State.waitPartner) {
+        if (state != State.CONNECTING || state != State.WAIT_PARTNER) {
             throw IllegalStateException("Can not change state to `connected`. Now state is not `waitPartner` nor `connecting`.")
         }
-        changeState(State.connected)
+        changeState(State.CONNECTED)
     }
 
     fun closed() {
-        changeState(State.closed)
+        changeState(State.CLOSED)
     }
 
     private fun changeState(newState: State) {

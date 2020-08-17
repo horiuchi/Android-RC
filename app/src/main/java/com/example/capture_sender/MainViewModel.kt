@@ -1,25 +1,20 @@
 package com.example.capture_sender
 
 import android.app.Application
-import android.content.Context
-import android.content.Intent
-import android.util.DisplayMetrics
 import android.view.View
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.capture_sender.api.ConnectOptions
 import com.example.capture_sender.api.Models
-import com.example.capture_sender.api.PeerConnection
+import com.example.capture_sender.api.WebSocketClient
 import kotlinx.coroutines.launch
-import org.webrtc.PeerConnectionFactory
 import org.webrtc.VideoCapturer
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private lateinit var preferences: Preferences
     private lateinit var model: ScreenCaptureModel
-    private var conn: PeerConnection? = null
+    private var conn: WebSocketClient? = null
     private var clientId: String? = null
 
     val reportMessage = MutableLiveData<String>()
@@ -55,7 +50,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val option = buildConnectionOption()
         if (option != null) {
             viewModelScope.launch {
-                conn = PeerConnection(option)
+//                conn = WebSocketClient(option)
                 startConnection()
             }
         }
@@ -84,11 +79,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             wsUrl,
             roomId,
             id,
-            { getLocalSdp() },
-            { onOpened() },
-            { onSetRemoteSdp(it) },
-            { onReceiveIceData(it) },
-            { onClosed() }
+            { getLocalSdp() }
+//            { onOpened() },
+//            { onSetRemoteSdp(it) },
+//            { onReceiveIceData(it) },
+//            { onClosed() }
         )
     }
 
