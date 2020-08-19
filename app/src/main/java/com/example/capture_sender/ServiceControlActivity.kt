@@ -5,17 +5,15 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_service_control.*
-import org.webrtc.ScreenCapturerAndroid
 
 class ServiceControlActivity : AppCompatActivity() {
     private val TAG = ServiceControlActivity::class.java.simpleName
@@ -25,6 +23,7 @@ class ServiceControlActivity : AppCompatActivity() {
         private const val REQUEST_MULTI_PERMISSION = 1002
         private const val STREAM_NAME_PREFIX = "android_device_stream"
         private val MANDATORY_PERMISSIONS = arrayOf(
+            Manifest.permission.ACCESS_NETWORK_STATE,
             Manifest.permission.FOREGROUND_SERVICE,
             Manifest.permission.INTERNET,
             Manifest.permission.MODIFY_AUDIO_SETTINGS,
@@ -35,9 +34,14 @@ class ServiceControlActivity : AppCompatActivity() {
         val metrics = DisplayMetrics()
     }
 
+    private lateinit var preferences: Preferences
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_service_control)
+
+        preferences = Preferences(application)
+        preferences.initializeRoomId()
 
         checkPermissions()
 
@@ -47,12 +51,43 @@ class ServiceControlActivity : AppCompatActivity() {
             if (toggleButton.isChecked) {
                 stopService(captureService)
             } else {
-                startForegroundService(captureService)
+                startCaptureService(captureService)
             }
         }
         toggleButton.isEnabled = false
 
         requestScreenCapturePermission()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        errorMultiLineText.text = ScreenCaptureService.errorDescription.joinToString("\n")
+    }
+
+    private fun startCaptureService(intent: Intent) {
+        val wsUrl = preferences.wsUrl
+        val roomId = preferences.roomId
+        if (wsUrl.isBlank() || roomId.isBlank()) {
+            showMessage("Required the `wsUrl` and `roomId` configurations.")
+            toggleButton.isChecked = false
+            return
+        }
+        val clientId = Utils.randomString(6)
+
+        intent.putExtra(ScreenCaptureService.EXTRA_WS_URL, wsUrl)
+        intent.putExtra(ScreenCaptureService.EXTRA_ROOM_ID, roomId)
+        intent.putExtra(ScreenCaptureService.EXTRA_CLIENT_ID, clientId)
+        startForegroundService(intent)
+
+        backToHome()
+    }
+
+    private fun backToHome() {
+        val startMain = Intent(Intent.ACTION_MAIN)
+        startMain.addCategory(Intent.CATEGORY_HOME)
+        startMain.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        startActivity(startMain)
     }
 
     private fun checkPermissions() {
@@ -97,7 +132,7 @@ class ServiceControlActivity : AppCompatActivity() {
 
         if (requestCode == REQUEST_MEDIA_PROJECTION) {
             if (resultCode != Activity.RESULT_OK) {
-                Toast.makeText(this, "User cancelled", Toast.LENGTH_LONG).show();
+                showMessage("User cancelled")
                 return
             }
 
@@ -126,5 +161,9 @@ class ServiceControlActivity : AppCompatActivity() {
 
     private fun openSettingsActivity() {
         startActivity(Intent(this, SettingsActivity::class.java))
+    }
+
+    private fun showMessage(msg: String) {
+        Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
     }
 }

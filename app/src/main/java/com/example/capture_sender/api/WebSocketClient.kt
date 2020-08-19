@@ -1,7 +1,10 @@
 package com.example.capture_sender.api
 
 import android.util.Log
+import com.example.capture_sender.Utils
 import okhttp3.*
+import org.webrtc.IceCandidate
+import org.webrtc.SessionDescription
 import java.time.Duration
 
 
@@ -54,7 +57,7 @@ class WebSocketClient(private val options: ConnectOptions, private val events: W
                 }
                 ModelsType.offer -> {
                     val action = model as Models.OfferAction
-                    answer(action)
+                    receiveOffer(action)
                 }
                 ModelsType.answer -> {
                     val action = model as Models.AnswerEvent
@@ -85,39 +88,59 @@ class WebSocketClient(private val options: ConnectOptions, private val events: W
     private fun register() {
         state.registering()
         send(Models.RegisterAction(roomId = options.roomId, clientId = options.clientId))
-        events.onOpened()
     }
 
     private fun offerOrWait(accept: Models.AcceptEvent) {
         if (accept.isExistClient) {
             state.connecting()
-            send(Models.OfferAction(sdp = options.getSdp()))
+            val params = SignalingParameters(true, null)
+            events.onConnected(params)
         } else {
             state.waitPartner()
         }
     }
 
-    private fun answer(offer: Models.OfferAction) {
+    private fun receiveOffer(offer: Models.OfferAction) {
         state.connected()
-        send(Models.AnswerEvent(sdp = options.getSdp()))
-        events.onConnected(offer.sdp)
+        val params =
+            SignalingParameters(false, Utils.createSDP(SessionDescription.Type.OFFER, offer.sdp))
+        events.onConnected(params)
     }
 
     private fun connected(answer: Models.AnswerEvent) {
         state.connected()
-        events.onConnected(answer.sdp)
+        events.onRemoteDescription(Utils.createSDP(SessionDescription.Type.ANSWER, answer.sdp))
     }
 
     private fun candidate(data: Models.CandidateData) {
-        events.onCandidate(data.ice)
+        events.onRemoteIceCandidate(
+            IceCandidate(
+                data.ice.sdpMid,
+                data.ice.sdpMLineIndex,
+                data.ice.candidate
+            )
+        )
     }
 
     private fun pong() {
         send(Models.PongEvent())
     }
 
-    fun sendCandidate(data: Models.IceData) {
-        send(Models.CandidateData(ice = data))
+    fun sendOffer(sdp: SessionDescription) {
+        send(Models.OfferAction(sdp = sdp.description))
+    }
+
+    fun sendAnswer(sdp: SessionDescription) {
+        send(Models.AnswerEvent(sdp = sdp.description))
+    }
+
+    fun sendCandidate(candidate: IceCandidate) {
+        val ice = Models.IceData(
+            sdpMid = candidate.sdpMid,
+            sdpMLineIndex = candidate.sdpMLineIndex,
+            candidate = candidate.sdp
+        )
+        send(Models.CandidateData(ice = ice))
     }
 
     fun close(code: Int = 1000, reason: String? = null) {
@@ -129,9 +152,9 @@ class WebSocketClient(private val options: ConnectOptions, private val events: W
         socket = null
         state.closed()
         if (t != null) {
-            events.onFailure(t)
+            events.onChannelError(t.message!!)
         } else {
-            events.onClosed()
+            events.onChannelClose()
         }
     }
 
@@ -154,16 +177,20 @@ class WebSocketClient(private val options: ConnectOptions, private val events: W
 data class ConnectOptions(
     val wsUrl: String,
     val roomId: String,
-    val clientId: String,
-    val getSdp: () -> String
+    val clientId: String
+)
+
+data class SignalingParameters(
+    val initiator: Boolean,
+    val offerSdp: SessionDescription?
 )
 
 interface WebSocketEvents {
-    fun onOpened()
-    fun onConnected(sdp: String)
-    fun onCandidate(action: Models.IceData)
-    fun onClosed()
-    fun onFailure(t: Throwable)
+    fun onConnected(params: SignalingParameters)
+    fun onRemoteDescription(sdp: SessionDescription)
+    fun onRemoteIceCandidate(candidate: IceCandidate)
+    fun onChannelClose()
+    fun onChannelError(description: String)
 }
 
 class ConnectionState {
@@ -209,7 +236,7 @@ class ConnectionState {
     }
 
     fun connected() {
-        if (state != State.CONNECTING || state != State.WAIT_PARTNER) {
+        if (state != State.CONNECTING && state != State.WAIT_PARTNER) {
             throw IllegalStateException("Can not change state to `connected`. Now state is not `waitPartner` nor `connecting`.")
         }
         changeState(State.CONNECTED)

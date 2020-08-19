@@ -2,6 +2,7 @@ package com.example.capture_sender.api
 
 import android.content.Context
 import android.util.Log
+import com.example.capture_sender.Utils
 import org.webrtc.*
 import org.webrtc.audio.AudioDeviceModule
 import org.webrtc.audio.JavaAudioDeviceModule
@@ -44,7 +45,6 @@ class PeerConnectionClient(
         private const val HD_VIDEO_WIDTH = 1280
         private const val HD_VIDEO_HEIGHT = 720
         private const val BPS_IN_KBPS = 1000
-        private const val RTCEVENTLOG_OUTPUT_DIR_NAME = "rtc_event_log"
 
         // Executor thread is started once in private ctor and is used for all
         // peer connection API calls to ensure new peer connection factory is
@@ -183,18 +183,22 @@ class PeerConnectionClient(
     }
 
     fun createPeerConnection(
-        localRender: VideoSink, remoteSink: VideoSink,
-        videoCapturer: VideoCapturer?, iceServers: List<PeerConnection.IceServer>
+        localRender: VideoSink?, remoteSink: VideoSink?,
+        videoCapturer: VideoCapturer?
     ) {
         if (peerConnectionParameters.videoCallEnabled && videoCapturer == null) {
             Log.w(TAG, "Video call enabled but no video capturer provided.")
         }
-        createPeerConnection(localRender, listOf(remoteSink), videoCapturer, iceServers)
+        createPeerConnection(
+            localRender,
+            if (remoteSink == null) emptyList() else listOf(remoteSink),
+            videoCapturer
+        )
     }
 
     fun createPeerConnection(
-        localRender: VideoSink, remoteSinks: List<VideoSink>,
-        videoCapturer: VideoCapturer?, iceServers: List<PeerConnection.IceServer>
+        localRender: VideoSink?, remoteSinks: List<VideoSink>,
+        videoCapturer: VideoCapturer?
     ) {
         if (peerConnectionParameters == null) {
             Log.e(TAG, "Creating peer connection without initializing factory.")
@@ -206,7 +210,7 @@ class PeerConnectionClient(
         executor.execute {
             try {
                 createMediaConstraintsInternal()
-                createPeerConnectionInternal(iceServers)
+                createPeerConnectionInternal()
             } catch (e: Exception) {
                 reportError("Failed to create peer connection: " + e.message)
                 throw e
@@ -394,15 +398,23 @@ class PeerConnectionClient(
                 "OfferToReceiveVideo", java.lang.Boolean.toString(isVideoCallEnabled)
             )
         )
+        // TODO: this key should remove on production.
+        sdpMediaConstraints!!.mandatory.add(
+            MediaConstraints.KeyValuePair(
+                "DtlsSrtpKeyAgreement",
+                "true"
+            )
+        )
     }
 
-    private fun createPeerConnectionInternal(iceServers: List<PeerConnection.IceServer>) {
+    private fun createPeerConnectionInternal() {
         if (factory == null || isError) {
             Log.e(TAG, "Peerconnection factory is not created")
             return
         }
         Log.d(TAG, "Create peer connection.")
         queuedRemoteCandidates = ArrayList()
+        val iceServers = emptyList<PeerConnection.IceServer>()
         val rtcConfig = PeerConnection.RTCConfiguration(iceServers)
         // TCP candidates are only useful when connecting to a server that supports
         // ICE-TCP.
@@ -414,7 +426,8 @@ class PeerConnectionClient(
         // Use ECDSA encryption.
         rtcConfig.keyType = PeerConnection.KeyType.ECDSA
         // Enable DTLS for normal calls and disable for loopback calls.
-        rtcConfig.enableDtlsSrtp = false // TODO
+//        rtcConfig.enableDtlsSrtp = false // TODO
+        rtcConfig.enableDtlsSrtp = true // TODO
         rtcConfig.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
         peerConnection = factory!!.createPeerConnection(rtcConfig, pcObserver)
         if (dataChannelEnabled) {
@@ -624,8 +637,8 @@ class PeerConnectionClient(
                     peerConnectionParameters.audioStartBitrate
                 )
             }
-            Log.d(TAG, "Set remote SDP.")
-            val sdpRemote = SessionDescription(sdp.type, sdpDescription)
+            Log.d(TAG, "Set remote SDP: $sdpDescription")
+            val sdpRemote = Utils.createSDP(sdp.type, sdpDescription)
             peerConnection!!.setRemoteDescription(sdpObserver, sdpRemote)
         }
     }
@@ -705,7 +718,7 @@ class PeerConnectionClient(
         capturer.startCapture(videoWidth, videoHeight, videoFps)
         localVideoTrack = factory!!.createVideoTrack(VIDEO_TRACK_ID, videoSource)
         localVideoTrack!!.setEnabled(renderVideo)
-        localVideoTrack!!.addSink(localRender)
+//        localVideoTrack!!.addSink(localRender)
         return localVideoTrack
     }
 
@@ -900,7 +913,7 @@ class PeerConnectionClient(
                     false
                 )
             }
-            val sdp = SessionDescription(origSdp.type, sdpDescription)
+            val sdp = Utils.createSDP(origSdp.type, sdpDescription)
             localSdp = sdp
             executor.execute {
                 setLocalSdp(sdp)

@@ -1,5 +1,7 @@
 package com.example.capture_sender
 
+import org.webrtc.SessionDescription
+
 object Utils {
     private val charPool = ('0'..'9')
 
@@ -7,5 +9,9 @@ object Utils {
         return (1..length)
             .map { charPool.random() }
             .joinToString("");
+    }
+
+    fun createSDP(type: SessionDescription.Type, description: String): SessionDescription {
+        return SessionDescription(type, "${description.trim()}\r\n")
     }
 }

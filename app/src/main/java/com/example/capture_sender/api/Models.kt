@@ -71,7 +71,7 @@ sealed class Models(val type: ModelsType) {
     ) : Models(ModelsType.candidate)
     data class IceData(
         @Json(name = "candidate") val candidate: String,
-        @Json(name = "sdpMLineIndex") val sdpMLineIndex: Int?,
+        @Json(name = "sdpMLineIndex") val sdpMLineIndex: Int,
         @Json(name = "sdpMid") val sdpMid: String?
     )
 

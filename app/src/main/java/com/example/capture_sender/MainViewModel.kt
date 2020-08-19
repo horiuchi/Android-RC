@@ -78,8 +78,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         return ConnectOptions(
             wsUrl,
             roomId,
-            id,
-            { getLocalSdp() }
+            id
+//            { getLocalSdp() },
 //            { onOpened() },
 //            { onSetRemoteSdp(it) },
 //            { onReceiveIceData(it) },
