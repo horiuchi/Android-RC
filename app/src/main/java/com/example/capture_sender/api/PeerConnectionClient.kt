@@ -200,10 +200,6 @@ class PeerConnectionClient(
         localRender: VideoSink?, remoteSinks: List<VideoSink>,
         videoCapturer: VideoCapturer?
     ) {
-        if (peerConnectionParameters == null) {
-            Log.e(TAG, "Creating peer connection without initializing factory.")
-            return
-        }
         this.localRender = localRender
         this.remoteSinks = remoteSinks
         this.videoCapturer = videoCapturer
@@ -223,7 +219,7 @@ class PeerConnectionClient(
     }
 
     private val isVideoCallEnabled: Boolean
-        private get() = peerConnectionParameters.videoCallEnabled && videoCapturer != null
+        get() = peerConnectionParameters.videoCallEnabled && videoCapturer != null
 
     private fun createPeerConnectionFactoryInternal(options: PeerConnectionFactory.Options?) {
         isError = false
@@ -361,7 +357,7 @@ class PeerConnectionClient(
         // Create audio constraints.
         audioConstraints = MediaConstraints()
         // added for audio performance measurements
-        if (peerConnectionParameters!!.noAudioProcessing) {
+        if (peerConnectionParameters.noAudioProcessing) {
             Log.d(TAG, "Disabling audio processing")
             audioConstraints!!.mandatory.add(
                 MediaConstraints.KeyValuePair(
@@ -519,7 +515,7 @@ class PeerConnectionClient(
 
     // TODO(sakal): getStats is deprecated.
     private val stats: Unit
-        private get() {
+        get() {
             if (peerConnection == null || isError) {
                 return
             }
@@ -629,7 +625,7 @@ class PeerConnectionClient(
                     false
                 )
             }
-            if (peerConnectionParameters!!.audioStartBitrate > 0) {
+            if (peerConnectionParameters.audioStartBitrate > 0) {
                 sdpDescription = setStartBitrate(
                     AUDIO_CODEC_OPUS,
                     false,
@@ -1165,7 +1161,7 @@ class PeerConnectionClient(
         for (line in lines) {
             val codecMatcher = codecPattern.matcher(line)
             if (codecMatcher.matches()) {
-                codecPayloadTypes.add(codecMatcher.group(1))
+                codecPayloadTypes.add(codecMatcher.group(1)!!)
             }
         }
         if (codecPayloadTypes.isEmpty()) {

@@ -7,13 +7,18 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
+import android.provider.Settings
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import kotlinx.android.synthetic.main.activity_service_control.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class ServiceControlActivity : AppCompatActivity() {
     private val TAG = ServiceControlActivity::class.java.simpleName
@@ -45,16 +50,25 @@ class ServiceControlActivity : AppCompatActivity() {
 
         checkPermissions()
 
-        toggleButton.isChecked = !ScreenCaptureService.isActive
-        toggleButton.setOnClickListener {
+        touchEmulationToggleButton.isEnabled = TouchEmulationAccessibilityService.instance == null
+        touchEmulationToggleButton.setOnClickListener {
+            val openSettings = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            openSettings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_HISTORY)
+            startActivity(openSettings)
+
+            showMessage("Please enable the `capture-sender` service.")
+        }
+
+        screenCaptureToggleButton.isChecked = !ScreenCaptureService.isActive
+        screenCaptureToggleButton.setOnClickListener {
             val captureService = Intent(application, ScreenCaptureService::class.java)
-            if (toggleButton.isChecked) {
+            if (screenCaptureToggleButton.isChecked) {
                 stopService(captureService)
             } else {
                 startCaptureService(captureService)
             }
         }
-        toggleButton.isEnabled = false
+        screenCaptureToggleButton.isEnabled = false
 
         requestScreenCapturePermission()
     }
@@ -62,7 +76,24 @@ class ServiceControlActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
 
+        touchEmulationToggleButton.isEnabled = TouchEmulationAccessibilityService.instance == null
+        screenCaptureToggleButton.isChecked = !ScreenCaptureService.isActive
         errorMultiLineText.text = ScreenCaptureService.errorDescription.joinToString("\n")
+
+        // TODO
+        lifecycleScope.launch {
+            doTouch()
+        }
+    }
+
+    suspend fun doTouch() {
+        delay(3000)
+        TouchEmulationAccessibilityService.instance?.doTouch(550f, 1650f)
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        Log.i(TAG, "dispatchTouchEvent: $ev")
+        return super.dispatchTouchEvent(ev)
     }
 
     private fun startCaptureService(intent: Intent) {
@@ -70,7 +101,7 @@ class ServiceControlActivity : AppCompatActivity() {
         val roomId = preferences.roomId
         if (wsUrl.isBlank() || roomId.isBlank()) {
             showMessage("Required the `wsUrl` and `roomId` configurations.")
-            toggleButton.isChecked = false
+            screenCaptureToggleButton.isChecked = false
             return
         }
         val clientId = Utils.randomString(6)
@@ -100,7 +131,11 @@ class ServiceControlActivity : AppCompatActivity() {
         requestPermissions(notGranted.toTypedArray(), REQUEST_MULTI_PERMISSION)
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         if (requestCode == REQUEST_MULTI_PERMISSION) {
@@ -139,7 +174,7 @@ class ServiceControlActivity : AppCompatActivity() {
             mediaProjectionPermissionResultData = data
             windowManager.defaultDisplay.getRealMetrics(metrics)
 
-            toggleButton.isEnabled = true
+            screenCaptureToggleButton.isEnabled = true
         }
     }
 

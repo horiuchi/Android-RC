@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:theme="@style/AppTheme.AppBarOverlay"
-        app:layout_constraintBottom_toTopOf="@id/toggleButton"
+        app:layout_constraintBottom_toTopOf="@id/touchEmulationToggleButton"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -25,29 +25,40 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <ToggleButton
-        android:id="@+id/toggleButton"
+    <Button
+        android:id="@+id/touchEmulationToggleButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="32dp"
+        android:layout_margin="16dp"
+        android:textAlignment="center"
+        android:text="@string/toggle_button_start_accessibility_service"
+        app:layout_constraintBottom_toTopOf="@id/screenCaptureToggleButton"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/appBarLayout" />
+
+    <ToggleButton
+        android:id="@+id/screenCaptureToggleButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
         android:checked="true"
         android:textAlignment="center"
         android:textOff="@string/toggle_button_stop_service"
         android:textOn="@string/toggle_button_start_service"
         app:layout_constraintBottom_toTopOf="@+id/errorMultiLineText"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/appBarLayout" />
+        app:layout_constraintTop_toBottomOf="@id/touchEmulationToggleButton" />
 
     <TextView
         android:id="@+id/errorMultiLineText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="32dp"
+        android:layout_margin="16dp"
         android:ems="10"
         android:singleLine="false"
         android:textAlignment="center"
         android:textColor="@color/colorCaution"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/toggleButton" />
+        app:layout_constraintTop_toBottomOf="@id/screenCaptureToggleButton" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

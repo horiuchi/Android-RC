@@ -6,7 +6,6 @@ import android.media.projection.MediaProjection
 import android.os.Handler
 import android.os.IBinder
 import android.util.Log
-import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.capture_sender.api.*

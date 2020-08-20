@@ -2,7 +2,10 @@
     <string name="app_name">capture-sender</string>
     <string name="title_activity_main">Screen Capture Control</string>
     <string name="title_activity_settings">Settings</string>
+    <string name="accessibility_service_description">Touch Emulation Service</string>
 
+    <string name="toggle_button_start_accessibility_service">Start Touch Emulation Service</string>
+    <string name="toggle_button_stop_accessibility_service">Stop Touch Emulation Service</string>
     <string name="toggle_button_start_service">Start Capture Service</string>
     <string name="toggle_button_stop_service">Stop Capture Service</string>
 
