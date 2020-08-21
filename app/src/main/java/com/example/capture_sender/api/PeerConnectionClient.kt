@@ -20,6 +20,7 @@ class PeerConnectionClient(
     private val TAG = PeerConnectionClient::class.java.simpleName
 
     companion object {
+        private const val DATA_CHANNEL_NAME = "android-rc data"
         const val VIDEO_TRACK_ID = "ARDAMSv0"
         const val AUDIO_TRACK_ID = "ARDAMSa0"
         const val VIDEO_TRACK_TYPE = "video"
@@ -176,14 +177,13 @@ class PeerConnectionClient(
     fun createPeerConnectionFactory(options: PeerConnectionFactory.Options?) {
         check(factory == null) { "PeerConnectionFactory has already been constructed" }
         executor.execute {
-            createPeerConnectionFactoryInternal(
-                options
-            )
+            createPeerConnectionFactoryInternal(options)
         }
     }
 
     fun createPeerConnection(
-        localRender: VideoSink?, remoteSink: VideoSink?,
+        localRender: VideoSink?,
+        remoteSink: VideoSink?,
         videoCapturer: VideoCapturer?
     ) {
         if (peerConnectionParameters.videoCallEnabled && videoCapturer == null) {
@@ -197,7 +197,8 @@ class PeerConnectionClient(
     }
 
     fun createPeerConnection(
-        localRender: VideoSink?, remoteSinks: List<VideoSink>,
+        localRender: VideoSink?,
+        remoteSinks: List<VideoSink>,
         videoCapturer: VideoCapturer?
     ) {
         this.localRender = localRender
@@ -360,28 +361,16 @@ class PeerConnectionClient(
         if (peerConnectionParameters.noAudioProcessing) {
             Log.d(TAG, "Disabling audio processing")
             audioConstraints!!.mandatory.add(
-                MediaConstraints.KeyValuePair(
-                    AUDIO_ECHO_CANCELLATION_CONSTRAINT,
-                    "false"
-                )
+                MediaConstraints.KeyValuePair(AUDIO_ECHO_CANCELLATION_CONSTRAINT, "false")
             )
             audioConstraints!!.mandatory.add(
-                MediaConstraints.KeyValuePair(
-                    AUDIO_AUTO_GAIN_CONTROL_CONSTRAINT,
-                    "false"
-                )
+                MediaConstraints.KeyValuePair(AUDIO_AUTO_GAIN_CONTROL_CONSTRAINT, "false")
             )
             audioConstraints!!.mandatory.add(
-                MediaConstraints.KeyValuePair(
-                    AUDIO_HIGH_PASS_FILTER_CONSTRAINT,
-                    "false"
-                )
+                MediaConstraints.KeyValuePair(AUDIO_HIGH_PASS_FILTER_CONSTRAINT, "false")
             )
             audioConstraints!!.mandatory.add(
-                MediaConstraints.KeyValuePair(
-                    AUDIO_NOISE_SUPPRESSION_CONSTRAINT,
-                    "false"
-                )
+                MediaConstraints.KeyValuePair(AUDIO_NOISE_SUPPRESSION_CONSTRAINT, "false")
             )
         }
         // Create SDP constraints.
@@ -391,15 +380,13 @@ class PeerConnectionClient(
         )
         sdpMediaConstraints!!.mandatory.add(
             MediaConstraints.KeyValuePair(
-                "OfferToReceiveVideo", java.lang.Boolean.toString(isVideoCallEnabled)
+                "OfferToReceiveVideo",
+                java.lang.Boolean.toString(isVideoCallEnabled)
             )
         )
         // TODO: this key should remove on production.
         sdpMediaConstraints!!.mandatory.add(
-            MediaConstraints.KeyValuePair(
-                "DtlsSrtpKeyAgreement",
-                "true"
-            )
+            MediaConstraints.KeyValuePair("DtlsSrtpKeyAgreement", "true")
         )
     }
 
@@ -435,7 +422,7 @@ class PeerConnectionClient(
                 peerConnectionParameters.dataChannelParameters!!.maxRetransmitTimeMs
             init.id = peerConnectionParameters.dataChannelParameters!!.id
             init.protocol = peerConnectionParameters.dataChannelParameters!!.protocol
-            dataChannel = peerConnection!!.createDataChannel("ApprtcDemo data", init)
+            dataChannel = peerConnection!!.createDataChannel(DATA_CHANNEL_NAME, init)
         }
         isInitiator = false
 
@@ -776,10 +763,7 @@ class PeerConnectionClient(
 
     private fun changeCaptureFormatInternal(width: Int, height: Int, framerate: Int) {
         if (!isVideoCallEnabled || isError || videoCapturer == null) {
-            Log.e(
-                TAG,
-                "Failed to change capture format. Video: " + isVideoCallEnabled + ". Error : " + isError
-            )
+            Log.e(TAG, "Failed to change capture format. Video: $isVideoCallEnabled. Error : $isError")
             return
         }
         Log.d(TAG, "changeCaptureFormat: " + width + "x" + height + "@" + framerate)
@@ -806,12 +790,16 @@ class PeerConnectionClient(
         override fun onIceConnectionChange(newState: PeerConnection.IceConnectionState) {
             executor.execute {
                 Log.d(TAG, "IceConnectionState: $newState")
-                if (newState == PeerConnection.IceConnectionState.CONNECTED) {
-                    events.onIceConnected()
-                } else if (newState == PeerConnection.IceConnectionState.DISCONNECTED) {
-                    events.onIceDisconnected()
-                } else if (newState == PeerConnection.IceConnectionState.FAILED) {
-                    reportError("ICE connection failed.")
+                when (newState) {
+                    PeerConnection.IceConnectionState.CONNECTED -> {
+                        events.onIceConnected()
+                    }
+                    PeerConnection.IceConnectionState.DISCONNECTED -> {
+                        events.onIceDisconnected()
+                    }
+                    PeerConnection.IceConnectionState.FAILED -> {
+                        reportError("ICE connection failed.")
+                    }
                 }
             }
         }
@@ -819,12 +807,16 @@ class PeerConnectionClient(
         override fun onConnectionChange(newState: PeerConnection.PeerConnectionState) {
             executor.execute {
                 Log.d(TAG, "PeerConnectionState: $newState")
-                if (newState == PeerConnection.PeerConnectionState.CONNECTED) {
-                    events.onConnected()
-                } else if (newState == PeerConnection.PeerConnectionState.DISCONNECTED) {
-                    events.onDisconnected()
-                } else if (newState == PeerConnection.PeerConnectionState.FAILED) {
-                    reportError("DTLS connection failed.")
+                when (newState) {
+                    PeerConnection.PeerConnectionState.CONNECTED -> {
+                        events.onConnected()
+                    }
+                    PeerConnection.PeerConnectionState.DISCONNECTED -> {
+                        events.onDisconnected()
+                    }
+                    PeerConnection.PeerConnectionState.FAILED -> {
+                        reportError("DTLS connection failed.")
+                    }
                 }
             }
         }
@@ -848,14 +840,11 @@ class PeerConnectionClient(
             if (!dataChannelEnabled) return
             dc.registerObserver(object : DataChannel.Observer {
                 override fun onBufferedAmountChange(previousAmount: Long) {
-                    Log.d(
-                        TAG,
-                        "Data channel buffered amount changed: " + dc.label() + ": " + dc.state()
-                    )
+                    Log.d(TAG, "Data channel buffered amount changed: ${dc.label()}: ${dc.state()}")
                 }
 
                 override fun onStateChange() {
-                    Log.d(TAG, "Data channel state changed: " + dc.label() + ": " + dc.state())
+                    Log.d(TAG, "Data channel state changed: ${dc.label()}: ${dc.state()}")
                 }
 
                 override fun onMessage(buffer: DataChannel.Buffer) {
@@ -865,10 +854,11 @@ class PeerConnectionClient(
                     }
                     val data = buffer.data
                     val bytes = ByteArray(data.capacity())
-                    data[bytes]
-                    val strData =
-                        String(bytes, Charset.forName("UTF-8"))
+                    data.get(bytes)
+                    val strData = String(bytes, Charset.forName("UTF-8"))
                     Log.d(TAG, "Got msg: $strData over $dc")
+
+                    // TODO
                 }
             })
         }
@@ -878,10 +868,7 @@ class PeerConnectionClient(
             // signaling/negotiation protocol.
         }
 
-        override fun onAddTrack(
-            receiver: RtpReceiver,
-            mediaStreams: Array<MediaStream>
-        ) {
+        override fun onAddTrack(receiver: RtpReceiver, mediaStreams: Array<MediaStream>) {
         }
     }
 
@@ -974,18 +961,12 @@ class PeerConnectionClient(
         var fieldTrials = ""
         if (peerConnectionParameters.videoFlexfecEnabled) {
             fieldTrials += VIDEO_FLEXFEC_FIELDTRIAL
-            Log.d(
-                TAG,
-                "Enable FlexFEC field trial."
-            )
+            Log.d(TAG, "Enable FlexFEC field trial.")
         }
         fieldTrials += VIDEO_VP8_INTEL_HW_ENCODER_FIELDTRIAL
         if (peerConnectionParameters.disableWebRtcAGCAndHPF) {
             fieldTrials += DISABLE_WEBRTC_AGC_FIELDTRIAL
-            Log.d(
-                TAG,
-                "Disable WebRTC AGC field trial."
-            )
+            Log.d(TAG, "Disable WebRTC AGC field trial.")
         }
         return fieldTrials
     }
@@ -996,8 +977,7 @@ class PeerConnectionClient(
         sdpDescription: String,
         bitrateKbps: Int
     ): String {
-        val lines =
-            sdpDescription.split("\r\n".toRegex()).toTypedArray()
+        val lines = sdpDescription.split("\r\n".toRegex()).toTypedArray()
         var rtpmapLineIndex = -1
         var sdpFormatUpdated = false
         var codecRtpMap: String? = null
@@ -1014,16 +994,10 @@ class PeerConnectionClient(
             }
         }
         if (codecRtpMap == null) {
-            Log.w(
-                TAG,
-                "No rtpmap for $codec codec"
-            )
+            Log.w(TAG, "No rtpmap for $codec codec")
             return sdpDescription
         }
-        Log.d(
-            TAG,
-            "Found " + codec + " rtpmap " + codecRtpMap + " at " + lines[rtpmapLineIndex]
-        )
+        Log.d(TAG, "Found " + codec + " rtpmap " + codecRtpMap + " at " + lines[rtpmapLineIndex])
 
         // Check if a=fmtp string already exist in remote SDP for this codec and
         // update it with new bitrate parameter.
@@ -1032,19 +1006,13 @@ class PeerConnectionClient(
         for (i in lines.indices) {
             val codecMatcher = codecPattern.matcher(lines[i])
             if (codecMatcher.matches()) {
-                Log.d(
-                    TAG,
-                    "Found " + codec + " " + lines[i]
-                )
+                Log.d(TAG, "Found " + codec + " " + lines[i])
                 if (isVideoCodec) {
                     lines[i] += "; $VIDEO_CODEC_PARAM_START_BITRATE=$bitrateKbps"
                 } else {
                     lines[i] += "; " + AUDIO_CODEC_PARAM_BITRATE + "=" + bitrateKbps * 1000
                 }
-                Log.d(
-                    TAG,
-                    "Update remote SDP line: " + lines[i]
-                )
+                Log.d(TAG, "Update remote SDP line: " + lines[i])
                 sdpFormatUpdated = true
                 break
             }
@@ -1054,17 +1022,12 @@ class PeerConnectionClient(
             newSdpDescription.append(lines[i]).append("\r\n")
             // Append new a=fmtp line if no such line exist for a codec.
             if (!sdpFormatUpdated && i == rtpmapLineIndex) {
-                var bitrateSet: String
-                bitrateSet = if (isVideoCodec) {
+                val bitrateSet = if (isVideoCodec) {
                     "a=fmtp:$codecRtpMap $VIDEO_CODEC_PARAM_START_BITRATE=$bitrateKbps"
                 } else {
-                    ("a=fmtp:" + codecRtpMap + " " + AUDIO_CODEC_PARAM_BITRATE + "="
-                            + bitrateKbps * 1000)
+                    "a=fmtp:$codecRtpMap $AUDIO_CODEC_PARAM_BITRATE=${bitrateKbps * 1000}"
                 }
-                Log.d(
-                    TAG,
-                    "Add remote SDP line: $bitrateSet"
-                )
+                Log.d(TAG, "Add remote SDP line: $bitrateSet")
                 newSdpDescription.append(bitrateSet).append("\r\n")
             }
         }
@@ -1072,10 +1035,7 @@ class PeerConnectionClient(
     }
 
     /** Returns the line number containing "m=audio|video", or -1 if no such line exists.  */
-    private fun findMediaDescriptionLine(
-        isAudio: Boolean,
-        sdpLines: Array<String>
-    ): Int {
+    private fun findMediaDescriptionLine(isAudio: Boolean, sdpLines: Array<String>): Int {
         val mediaDescription = if (isAudio) "m=audio " else "m=video "
         for (i in sdpLines.indices) {
             if (sdpLines[i].startsWith(mediaDescription)) {
@@ -1105,16 +1065,13 @@ class PeerConnectionClient(
     }
 
     private fun movePayloadTypesToFront(
-        preferredPayloadTypes: List<String>, mLine: String
+        preferredPayloadTypes: List<String>,
+        mLine: String
     ): String? {
         // The format of the media description line should be: m=<media> <port> <proto> <fmt> ...
-        val origLineParts =
-            Arrays.asList(*mLine.split(" ".toRegex()).toTypedArray())
+        val origLineParts = Arrays.asList(*mLine.split(" ".toRegex()).toTypedArray())
         if (origLineParts.size <= 3) {
-            Log.e(
-                TAG,
-                "Wrong SDP media description format: $mLine"
-            )
+            Log.e(TAG, "Wrong SDP media description format: $mLine")
             return null
         }
         val header: List<String> = origLineParts.subList(0, 3)
@@ -1123,41 +1080,25 @@ class PeerConnectionClient(
         unpreferredPayloadTypes.removeAll(preferredPayloadTypes)
         // Reconstruct the line with |preferredPayloadTypes| moved to the beginning of the payload
         // types.
-        val newLineParts: MutableList<String?> =
-            ArrayList()
+        val newLineParts: MutableList<String?> = ArrayList()
         newLineParts.addAll(header)
         newLineParts.addAll(preferredPayloadTypes)
         newLineParts.addAll(unpreferredPayloadTypes)
-        return joinString(
-            newLineParts,
-            " ",
-            false /* delimiterAtEnd */
-        )
+        return joinString(newLineParts, " ", false /* delimiterAtEnd */)
     }
 
-    private fun preferCodec(
-        sdpDescription: String,
-        codec: String,
-        isAudio: Boolean
-    ): String {
-        val lines =
-            sdpDescription.split("\r\n".toRegex()).toTypedArray()
-        val mLineIndex =
-            findMediaDescriptionLine(isAudio, lines)
+    private fun preferCodec(sdpDescription: String, codec: String, isAudio: Boolean): String {
+        val lines = sdpDescription.split("\r\n".toRegex()).toTypedArray()
+        val mLineIndex = findMediaDescriptionLine(isAudio, lines)
         if (mLineIndex == -1) {
-            Log.w(
-                TAG,
-                "No mediaDescription line, so can't prefer $codec"
-            )
+            Log.w(TAG, "No mediaDescription line, so can't prefer $codec")
             return sdpDescription
         }
         // A list with all the payload types with name |codec|. The payload types are integers in the
         // range 96-127, but they are stored as strings here.
-        val codecPayloadTypes: MutableList<String> =
-            ArrayList()
+        val codecPayloadTypes: MutableList<String> = ArrayList()
         // a=rtpmap:<payload type> <encoding name>/<clock rate> [/<encoding parameters>]
-        val codecPattern =
-            Pattern.compile("^a=rtpmap:(\\d+) $codec(/\\d+)+[\r]?$")
+        val codecPattern = Pattern.compile("^a=rtpmap:(\\d+) $codec(/\\d+)+[\r]?$")
         for (line in lines) {
             val codecMatcher = codecPattern.matcher(line)
             if (codecMatcher.matches()) {
@@ -1165,24 +1106,14 @@ class PeerConnectionClient(
             }
         }
         if (codecPayloadTypes.isEmpty()) {
-            Log.w(
-                TAG,
-                "No payload types with name $codec"
-            )
+            Log.w(TAG, "No payload types with name $codec")
             return sdpDescription
         }
-        val newMLine = movePayloadTypesToFront(
-            codecPayloadTypes,
-            lines[mLineIndex]
-        )
-            ?: return sdpDescription
+        val newMLine =
+            movePayloadTypesToFront(codecPayloadTypes, lines[mLineIndex]) ?: return sdpDescription
         Log.d(TAG, "Change media description from: " + lines[mLineIndex] + " to " + newMLine)
         lines[mLineIndex] = newMLine
-        return joinString(
-            Arrays.asList(
-                *lines
-            ), "\r\n", true /* delimiterAtEnd */
-        )
+        return joinString(Arrays.asList(*lines), "\r\n", true /* delimiterAtEnd */)
     }
 
 

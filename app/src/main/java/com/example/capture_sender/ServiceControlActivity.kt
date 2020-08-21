@@ -8,17 +8,17 @@ import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.provider.Settings
+import android.util.AttributeSet
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import kotlinx.android.synthetic.main.activity_service_control.*
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 class ServiceControlActivity : AppCompatActivity() {
     private val TAG = ServiceControlActivity::class.java.simpleName
@@ -45,6 +45,8 @@ class ServiceControlActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_service_control)
 
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
         preferences = Preferences(application)
         preferences.initializeRoomId()
 
@@ -61,16 +63,17 @@ class ServiceControlActivity : AppCompatActivity() {
 
         screenCaptureToggleButton.isChecked = !ScreenCaptureService.isActive
         screenCaptureToggleButton.setOnClickListener {
-            val captureService = Intent(application, ScreenCaptureService::class.java)
             if (screenCaptureToggleButton.isChecked) {
+                val captureService = Intent(application, ScreenCaptureService::class.java)
                 stopService(captureService)
             } else {
-                startCaptureService(captureService)
+                requestScreenCapturePermission()
             }
         }
-        screenCaptureToggleButton.isEnabled = false
+    }
 
-        requestScreenCapturePermission()
+    override fun onCreateView(name: String, context: Context, attrs: AttributeSet): View? {
+        return super.onCreateView(name, context, attrs)
     }
 
     override fun onResume() {
@@ -81,9 +84,9 @@ class ServiceControlActivity : AppCompatActivity() {
         errorMultiLineText.text = ScreenCaptureService.errorDescription.joinToString("\n")
 
         // TODO
-        lifecycleScope.launch {
-            doTouch()
-        }
+//        lifecycleScope.launch {
+//            doTouch()
+//        }
     }
 
     suspend fun doTouch() {
@@ -91,10 +94,10 @@ class ServiceControlActivity : AppCompatActivity() {
         TouchEmulationAccessibilityService.instance?.doTouch(550f, 1650f)
     }
 
-    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        Log.i(TAG, "dispatchTouchEvent: $ev")
-        return super.dispatchTouchEvent(ev)
-    }
+//    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+//        Log.i(TAG, "dispatchTouchEvent: $ev")
+//        return super.dispatchTouchEvent(ev)
+//    }
 
     private fun startCaptureService(intent: Intent) {
         val wsUrl = preferences.wsUrl
@@ -174,11 +177,13 @@ class ServiceControlActivity : AppCompatActivity() {
             mediaProjectionPermissionResultData = data
             windowManager.defaultDisplay.getRealMetrics(metrics)
 
-            screenCaptureToggleButton.isEnabled = true
+            val captureService = Intent(application, ScreenCaptureService::class.java)
+            startCaptureService(captureService)
         }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        Log.i(TAG, "onCreateOptionsMenu Called")
         val inflater = menuInflater
         inflater.inflate(R.menu.main_options, menu)
         return true
@@ -188,6 +193,10 @@ class ServiceControlActivity : AppCompatActivity() {
         return when (item.itemId) {
             R.id.app_bar_settings -> {
                 openSettingsActivity()
+                true
+            }
+            android.R.id.home -> {
+                finish()
                 true
             }
             else -> super.onOptionsItemSelected(item)

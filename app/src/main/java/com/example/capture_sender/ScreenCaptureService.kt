@@ -151,7 +151,7 @@ class ScreenCaptureService : Service() {
         val height = metrics.heightPixels / SCREEN_RESOLUTION_SCALE
         val fps = 30
         val dataChannelParameters = PeerConnectionClient.DataChannelParameters(
-            false, 0, 0, "", false, 0
+            true, 0, 0, "", false, 0
         )
         val peerConnectionParameters = PeerConnectionClient.PeerConnectionParameters(
             true, width, height, fps, 0, VIDEO_CODEC, true, true,
