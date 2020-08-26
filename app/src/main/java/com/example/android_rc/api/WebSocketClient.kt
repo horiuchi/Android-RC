@@ -1,7 +1,7 @@
-package com.example.capture_sender.api
+package com.example.android_rc.api
 
 import android.util.Log
-import com.example.capture_sender.Utils
+import com.example.android_rc.Utils
 import okhttp3.*
 import org.webrtc.IceCandidate
 import org.webrtc.SessionDescription

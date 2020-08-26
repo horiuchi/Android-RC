@@ -1,4 +1,4 @@
-package com.example.capture_sender
+package com.example.android_rc
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription

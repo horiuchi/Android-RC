@@ -1,4 +1,4 @@
-package com.example.capture_sender
+package com.example.android_rc
 
 import android.content.BroadcastReceiver
 import android.content.Context

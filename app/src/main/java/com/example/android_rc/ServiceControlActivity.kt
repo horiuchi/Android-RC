@@ -1,4 +1,4 @@
-package com.example.capture_sender
+package com.example.android_rc
 
 import android.Manifest
 import android.app.Activity
@@ -13,7 +13,6 @@ import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
-import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity

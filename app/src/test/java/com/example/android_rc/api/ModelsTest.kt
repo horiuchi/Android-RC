@@ -1,10 +1,9 @@
-package com.example.capture_sender.api
+package com.example.android_rc.api
 
-import org.junit.Assert
 import org.junit.Test
 
 import org.junit.Assert.*
-import com.example.capture_sender.api.Models.*
+import com.example.android_rc.api.Models.*
 
 class ModelsTest {
     @Test

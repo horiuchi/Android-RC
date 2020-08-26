@@ -1,4 +1,4 @@
-package com.example.capture_sender
+package com.example.android_rc
 
 import android.accessibilityservice.GestureDescription
 import android.app.*
@@ -9,7 +9,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.example.capture_sender.api.*
+import com.example.android_rc.api.*
 import org.webrtc.*
 
 const val NOTIFICATION_ID = "screen_capture_sender_service"
@@ -322,6 +322,7 @@ class ScreenCaptureService : Service() {
         webSocketClient?.sendCandidate(candidate)
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun onIceCandidatesRemovedInternal(candidates: Array<IceCandidate>) {
         Log.w(TAG, "onIceCandidatesRemovedInternal event is not supported.")
 //        webSocketClient?.sendLocalIceCandidateRemovals(candidates)

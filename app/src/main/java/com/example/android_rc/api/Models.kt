@@ -1,4 +1,4 @@
-package com.example.capture_sender.api
+package com.example.android_rc.api
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonAdapter

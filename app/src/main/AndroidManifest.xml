@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.capture_sender">
+    package="com.example.android_rc">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -18,7 +18,7 @@
         android:theme="@style/AppTheme">
 
         <activity
-            android:name=".ServiceControlActivity"
+            android:name="com.example.android_rc.ServiceControlActivity"
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
@@ -29,7 +29,7 @@
         </activity>
 
         <receiver
-            android:name=".ServiceStopperBroadcastReceiver"
+            android:name="com.example.android_rc.ServiceStopperBroadcastReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
@@ -40,13 +40,13 @@
         </receiver>
 
         <service
-            android:name=".ScreenCaptureService"
+            android:name="com.example.android_rc.ScreenCaptureService"
             android:enabled="true"
             android:exported="true"
             android:foregroundServiceType="mediaProjection" />
 
         <service
-            android:name=".TouchEmulationAccessibilityService"
+            android:name="com.example.android_rc.TouchEmulationAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" >
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
@@ -57,7 +57,7 @@
         </service>
 
         <activity
-            android:name=".SettingsActivity"
+            android:name="com.example.android_rc.SettingsActivity"
             android:label="@string/title_activity_settings" />
     </application>
 

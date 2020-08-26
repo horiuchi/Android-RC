@@ -1,10 +1,10 @@
-package com.example.capture_sender.api
+package com.example.android_rc.api
 
 import android.accessibilityservice.GestureDescription
 import android.content.Context
 import android.graphics.Path
 import android.util.Log
-import com.example.capture_sender.Utils
+import com.example.android_rc.Utils
 import org.webrtc.*
 import org.webrtc.audio.AudioDeviceModule
 import org.webrtc.audio.JavaAudioDeviceModule
@@ -425,12 +425,12 @@ class PeerConnectionClient(
         if (dataChannelEnabled) {
             val init = DataChannel.Init()
             init.ordered = peerConnectionParameters.dataChannelParameters!!.ordered
-            init.negotiated = peerConnectionParameters.dataChannelParameters!!.negotiated
-            init.maxRetransmits = peerConnectionParameters.dataChannelParameters!!.maxRetransmits
+            init.negotiated = peerConnectionParameters.dataChannelParameters.negotiated
+            init.maxRetransmits = peerConnectionParameters.dataChannelParameters.maxRetransmits
             init.maxRetransmitTimeMs =
-                peerConnectionParameters.dataChannelParameters!!.maxRetransmitTimeMs
-            init.id = peerConnectionParameters.dataChannelParameters!!.id
-            init.protocol = peerConnectionParameters.dataChannelParameters!!.protocol
+                peerConnectionParameters.dataChannelParameters.maxRetransmitTimeMs
+            init.id = peerConnectionParameters.dataChannelParameters.id
+            init.protocol = peerConnectionParameters.dataChannelParameters.protocol
             dataChannel = peerConnection!!.createDataChannel(DATA_CHANNEL_NAME, init)
         }
         isInitiator = false
