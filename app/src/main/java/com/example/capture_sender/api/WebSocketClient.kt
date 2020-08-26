@@ -41,7 +41,7 @@ class WebSocketClient(private val options: ConnectOptions, private val events: W
 
         override fun onMessage(webSocket: WebSocket, text: String) {
             Log.i(TAG, "On Message Event: $text")
-            val model = fromJson(text)
+            val model = Models.fromJson(text)
             if (model == null) {
                 Log.e(TAG, "Error parsing response data.")
                 return
@@ -82,7 +82,7 @@ class WebSocketClient(private val options: ConnectOptions, private val events: W
 
     private fun send(action: Models) {
         Log.i(TAG, "On Send Action: $action")
-        socket?.send(toJson(action))
+        socket?.send(Models.toJson(action))
     }
 
     private fun register() {

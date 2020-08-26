@@ -1,6 +1,8 @@
 package com.example.capture_sender.api
 
+import android.accessibilityservice.GestureDescription
 import android.content.Context
+import android.graphics.Path
 import android.util.Log
 import com.example.capture_sender.Utils
 import org.webrtc.*
@@ -15,7 +17,8 @@ class PeerConnectionClient(
     private val appContext: Context,
     private val rootEglBase: EglBase,
     private val peerConnectionParameters: PeerConnectionParameters,
-    private val events: PeerConnectionEvents
+    private val events: PeerConnectionEvents,
+    private val dataEvents: ClientDataEvents
 ) {
     private val TAG = PeerConnectionClient::class.java.simpleName
 
@@ -54,6 +57,8 @@ class PeerConnectionClient(
     }
 
     private val statsTimer = Timer()
+    private val positionConverter =
+        PositionConverter(peerConnectionParameters.videoWidth, peerConnectionParameters.videoHeight)
     private var factory: PeerConnectionFactory? = null
     private var peerConnection: PeerConnection? = null
     private var audioSource: AudioSource? = null
@@ -169,6 +174,10 @@ class PeerConnectionClient(
          * Callback fired once peer connection error happened.
          */
         fun onPeerConnectionError(description: String)
+    }
+
+    interface ClientDataEvents {
+        fun onTouchEvent(stroke: GestureDescription.StrokeDescription)
     }
 
     /**
@@ -763,7 +772,10 @@ class PeerConnectionClient(
 
     private fun changeCaptureFormatInternal(width: Int, height: Int, framerate: Int) {
         if (!isVideoCallEnabled || isError || videoCapturer == null) {
-            Log.e(TAG, "Failed to change capture format. Video: $isVideoCallEnabled. Error : $isError")
+            Log.e(
+                TAG,
+                "Failed to change capture format. Video: $isVideoCallEnabled. Error : $isError"
+            )
             return
         }
         Log.d(TAG, "changeCaptureFormat: " + width + "x" + height + "@" + framerate)
@@ -858,7 +870,34 @@ class PeerConnectionClient(
                     val strData = String(bytes, Charset.forName("UTF-8"))
                     Log.d(TAG, "Got msg: $strData over $dc")
 
-                    // TODO
+                    val model = CommandModels.fromJson(strData)
+                    when (model?.type) {
+                        CommandModelsType.config -> {
+                            var command = model as CommandModels.ConfigData
+                            positionConverter.setClientSize(command.data.width, command.data.height)
+                        }
+                        CommandModelsType.touch -> {
+                            var command = model as CommandModels.TouchData
+                            if (command.data.size != 2) {
+                                Log.w(TAG, "TouchData is invalid.")
+                                return
+                            }
+
+                            val start = command.data[0].let {
+                                positionConverter.calcPosition(it.x, it.y)
+                            }
+                            val end = command.data[1].let {
+                                positionConverter.calcPosition(it.x, it.y)
+                            }
+                            val duration = command.data[1].t - command.data[0].t
+                            val path = Path()
+                            path.moveTo(start.x, start.y)
+                            path.lineTo(end.x, end.y)
+                            val stroke =
+                                GestureDescription.StrokeDescription(path, 0L, duration.toLong())
+                            dataEvents.onTouchEvent(stroke)
+                        }
+                    }
                 }
             })
         }

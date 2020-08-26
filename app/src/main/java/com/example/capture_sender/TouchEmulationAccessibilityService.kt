@@ -34,6 +34,25 @@ class TouchEmulationAccessibilityService : AccessibilityService() {
         Log.i(TAG, "onInterrupt")
     }
 
+    fun doTouch(stroke: GestureDescription.StrokeDescription) {
+        Log.i(TAG, "Called doTouch: ($stroke)")
+
+        val gestureDescription = GestureDescription.Builder()
+            .addStroke(stroke)
+            .build()
+        val result = this.dispatchGesture(gestureDescription, object : GestureResultCallback() {
+            override fun onCompleted(gestureDescription: GestureDescription?) {
+                Log.i(TAG, "Called Completed: ($stroke) $gestureDescription")
+                super.onCompleted(gestureDescription)
+            }
+
+            override fun onCancelled(gestureDescription: GestureDescription?) {
+                Log.i(TAG, "Called Cancelled: ($stroke) $gestureDescription")
+                super.onCancelled(gestureDescription)
+            }
+        }, null)
+        Log.i(TAG, "Called Finished: ($stroke) $result")
+    }
 
     fun doTouch(x: Float, y: Float) {
         Log.i(TAG, "Called doTouch: ($x, $y)")
@@ -43,7 +62,7 @@ class TouchEmulationAccessibilityService : AccessibilityService() {
         gestureBuilder.addStroke(GestureDescription.StrokeDescription(path, 0L, 10L))
         val gestureDescription = gestureBuilder.build()
 
-        val result = this.dispatchGesture(gestureDescription, object: GestureResultCallback() {
+        val result = this.dispatchGesture(gestureDescription, object : GestureResultCallback() {
             override fun onCompleted(gestureDescription: GestureDescription?) {
                 Log.i(TAG, "Called Completed: ($x, $y) $gestureDescription")
                 super.onCompleted(gestureDescription)

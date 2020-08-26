@@ -7,35 +7,35 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.adapters.PolymorphicJsonAdapterFactory
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 
-val moshi: Moshi = Moshi.Builder()
-    .add(
-        PolymorphicJsonAdapterFactory.of(Models::class.java, "type")
-            .withSubtype(Models.RegisterAction::class.java, ModelsType.register.name)
-            .withSubtype(Models.AcceptEvent::class.java, ModelsType.accept.name)
-            .withSubtype(Models.RejectEvent::class.java, ModelsType.reject.name)
-            .withSubtype(Models.OfferAction::class.java, ModelsType.offer.name)
-            .withSubtype(Models.AnswerEvent::class.java, ModelsType.answer.name)
-            .withSubtype(Models.CandidateData::class.java, ModelsType.candidate.name)
-            .withSubtype(Models.PingAction::class.java, ModelsType.ping.name)
-            .withSubtype(Models.PongEvent::class.java, ModelsType.pong.name)
-            .withSubtype(Models.ByeEvent::class.java, ModelsType.bye.name)
-    )
-    .add(KotlinJsonAdapterFactory())
-    .build()
-
-val adapter: JsonAdapter<Models> = moshi.adapter(Models::class.java)
-
-fun fromJson(json: String): Models? {
-    return adapter.fromJson(json)
-}
-
-fun toJson(model: Models): String {
-    return adapter.toJson(model)
-}
-
-/// Model Definition
-
 sealed class Models(val type: ModelsType) {
+
+    companion object {
+        private val moshi: Moshi = Moshi.Builder()
+            .add(
+                PolymorphicJsonAdapterFactory.of(Models::class.java, "type")
+                    .withSubtype(RegisterAction::class.java, ModelsType.register.name)
+                    .withSubtype(AcceptEvent::class.java, ModelsType.accept.name)
+                    .withSubtype(RejectEvent::class.java, ModelsType.reject.name)
+                    .withSubtype(OfferAction::class.java, ModelsType.offer.name)
+                    .withSubtype(AnswerEvent::class.java, ModelsType.answer.name)
+                    .withSubtype(CandidateData::class.java, ModelsType.candidate.name)
+                    .withSubtype(PingAction::class.java, ModelsType.ping.name)
+                    .withSubtype(PongEvent::class.java, ModelsType.pong.name)
+                    .withSubtype(ByeEvent::class.java, ModelsType.bye.name)
+            )
+            .add(KotlinJsonAdapterFactory())
+            .build()
+
+        private val adapter: JsonAdapter<Models> = moshi.adapter(Models::class.java)
+
+        fun fromJson(json: String): Models? {
+            return adapter.fromJson(json)
+        }
+
+        fun toJson(model: Models): String {
+            return adapter.toJson(model)
+        }
+    }
 
     @JsonClass(generateAdapter = true)
     data class RegisterAction(

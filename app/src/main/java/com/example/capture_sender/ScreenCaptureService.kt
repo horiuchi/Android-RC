@@ -1,5 +1,6 @@
 package com.example.capture_sender
 
+import android.accessibilityservice.GestureDescription
 import android.app.*
 import android.content.Intent
 import android.media.projection.MediaProjection
@@ -159,7 +160,11 @@ class ScreenCaptureService : Service() {
         )
 
         peerConnectionClient = PeerConnectionClient(
-            applicationContext, eglBase, peerConnectionParameters, peerConnectionEvents
+            applicationContext,
+            eglBase,
+            peerConnectionParameters,
+            peerConnectionEvents,
+            clientDataEvents
         )
         peerConnectionClient!!.createPeerConnectionFactory(PeerConnectionFactory.Options())
     }
@@ -324,7 +329,7 @@ class ScreenCaptureService : Service() {
 
     fun onIceConnectedInternal() {
         val delta = System.currentTimeMillis() - callStartedTimeMs
-        Log.i(TAG, "ICE connected, delay=" + delta + "ms")
+        Log.i(TAG, "ICE connected, delay=${delta}ms")
     }
 
     fun onIceDisconnectedInternal() {
@@ -333,7 +338,7 @@ class ScreenCaptureService : Service() {
 
     fun onConnectedInternal() {
         val delta = System.currentTimeMillis() - callStartedTimeMs
-        Log.i(TAG, "DTLS connected, delay=" + delta + "ms")
+        Log.i(TAG, "DTLS connected, delay=${delta}ms")
         connected = true
 
         if (peerConnectionClient == null || isError) {
@@ -360,6 +365,17 @@ class ScreenCaptureService : Service() {
         }
     }
 
+    private val clientDataEvents = object : PeerConnectionClient.ClientDataEvents {
+        override fun onTouchEvent(stroke: GestureDescription.StrokeDescription) {
+            runOnMainThread {
+                onTouchEventInternal(stroke)
+            }
+        }
+    }
+
+    fun onTouchEventInternal(stroke: GestureDescription.StrokeDescription) {
+        TouchEmulationAccessibilityService.instance?.doTouch(stroke)
+    }
 
     private fun runOnMainThread(task: () -> Unit) {
         handler.post(task)
