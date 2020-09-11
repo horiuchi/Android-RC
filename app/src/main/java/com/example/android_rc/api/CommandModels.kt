@@ -1,5 +1,6 @@
 package com.example.android_rc.api
 
+import android.util.Log
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.JsonClass
@@ -61,7 +62,7 @@ data class TouchEventData(
     val t: Int
 )
 
-class PositionConverter(private val videoWidth: Int, private val videoHeight: Int) {
+class PositionConverter(private val videoWidth: Int, private val videoHeight: Int, private val scale: Float) {
     private var widthRatio = 1.0F
     private var heightRatio = 1.0F
 
@@ -70,11 +71,13 @@ class PositionConverter(private val videoWidth: Int, private val videoHeight: In
             clear()
             return
         }
-        widthRatio = videoWidth / width
-        heightRatio = videoHeight / height
+        widthRatio = videoWidth * scale / width
+        heightRatio = videoHeight * scale / height
+        Log.i("PositionConverter", "onTouchData: [Rect] (${videoWidth * scale}, ${videoHeight * scale}) -> ($width, $height)")
     }
 
     fun calcPosition(x: Float, y: Float): Position {
+        Log.i("PositionConverter", "onTouchData: [Pos] ($x, $y) -> (${x * widthRatio}, ${y * heightRatio})")
         return Position(x * widthRatio, y * heightRatio)
     }
 

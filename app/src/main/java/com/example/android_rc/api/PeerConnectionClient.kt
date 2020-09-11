@@ -58,7 +58,7 @@ class PeerConnectionClient(
 
     private val statsTimer = Timer()
     private val positionConverter =
-        PositionConverter(peerConnectionParameters.videoWidth, peerConnectionParameters.videoHeight)
+        PositionConverter(peerConnectionParameters.videoWidth, peerConnectionParameters.videoHeight, peerConnectionParameters.videoScale)
     private var factory: PeerConnectionFactory? = null
     private var peerConnection: PeerConnection? = null
     private var audioSource: AudioSource? = null
@@ -90,17 +90,13 @@ class PeerConnectionClient(
     private var dataChannel: DataChannel? = null
     private val dataChannelEnabled = true
 
-    class DataChannelParameters(
-        val ordered: Boolean, val maxRetransmitTimeMs: Int, val maxRetransmits: Int,
-        val protocol: String, val negotiated: Boolean, val id: Int
-    )
-
     class PeerConnectionParameters(
         val videoCallEnabled: Boolean,
 //        val loopback: Boolean,
 //        val tracing: Boolean,
         val videoWidth: Int,
         val videoHeight: Int,
+        val videoScale: Float,
         val videoFps: Int,
         val videoMaxBitrate: Int,
         val videoCodec: String,
@@ -117,7 +113,6 @@ class PeerConnectionClient(
         val disableBuiltInNS: Boolean,
         val disableWebRtcAGCAndHPF: Boolean,
 //        val enableRtcEventLog: Boolean,
-        val dataChannelParameters: DataChannelParameters?
     )
 
     interface PeerConnectionEvents {
@@ -424,13 +419,12 @@ class PeerConnectionClient(
         peerConnection = factory!!.createPeerConnection(rtcConfig, pcObserver)
         if (dataChannelEnabled) {
             val init = DataChannel.Init()
-            init.ordered = peerConnectionParameters.dataChannelParameters!!.ordered
-            init.negotiated = peerConnectionParameters.dataChannelParameters.negotiated
-            init.maxRetransmits = peerConnectionParameters.dataChannelParameters.maxRetransmits
-            init.maxRetransmitTimeMs =
-                peerConnectionParameters.dataChannelParameters.maxRetransmitTimeMs
-            init.id = peerConnectionParameters.dataChannelParameters.id
-            init.protocol = peerConnectionParameters.dataChannelParameters.protocol
+            init.ordered = true
+            init.negotiated = false
+            init.maxRetransmits = 0
+            init.maxRetransmitTimeMs = 0
+            init.id = 0
+            init.protocol = ""
             dataChannel = peerConnection!!.createDataChannel(DATA_CHANNEL_NAME, init)
         }
         isInitiator = false
@@ -868,7 +862,7 @@ class PeerConnectionClient(
                     val bytes = ByteArray(data.capacity())
                     data.get(bytes)
                     val strData = String(bytes, Charset.forName("UTF-8"))
-                    Log.d(TAG, "Got msg: $strData over $dc")
+                    Log.d(TAG, "Data channel got msg: $strData over $dc")
 
                     val model = CommandModels.fromJson(strData)
                     when (model?.type) {
@@ -893,8 +887,9 @@ class PeerConnectionClient(
                             val path = Path()
                             path.moveTo(start.x, start.y)
                             path.lineTo(end.x, end.y)
-                            val stroke =
-                                GestureDescription.StrokeDescription(path, 0L, duration.toLong())
+                            val stroke = GestureDescription.StrokeDescription(path, 0L, duration.toLong())
+
+                            Log.i(TAG, "onTouchData: ${command.data[0]} -> $start, ${command.data[1]} -> $end ($duration)")
                             dataEvents.onTouchEvent(stroke)
                         }
                     }

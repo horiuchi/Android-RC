@@ -26,7 +26,7 @@ class ScreenCaptureService : Service() {
         private const val TRACK_ID_PREFIX = "ARDAMS"
         private const val VIDEO_TRACK_ID = TRACK_ID_PREFIX + "v0"
         private const val AUDIO_TRACK_ID = TRACK_ID_PREFIX + "a0"
-        private const val SCREEN_RESOLUTION_SCALE = 2
+        private const val SCREEN_RESOLUTION_SCALE = 2.0f
         private const val VIDEO_CODEC = "VP8"
         private const val STAT_CALLBACK_PERIOD = 1000
 
@@ -73,7 +73,7 @@ class ScreenCaptureService : Service() {
     }
 
     private fun returnToActivity() {
-        val intent = Intent(applicationContext, ServiceControlActivity::class.java)
+        val intent = Intent(applicationContext, MainActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         startActivity(intent)
     }
@@ -95,7 +95,7 @@ class ScreenCaptureService : Service() {
             PendingIntent.getActivity(
                 this,
                 0,
-                Intent(this, ServiceControlActivity::class.java),
+                Intent(this, MainActivity::class.java),
                 PendingIntent.FLAG_UPDATE_CURRENT
             )
         val stopIntent = PendingIntent.getBroadcast(
@@ -144,19 +144,16 @@ class ScreenCaptureService : Service() {
     }
 
     private fun initializePeerConnection() {
-        ServiceControlActivity.mediaProjectionPermissionResultData
+        MainActivity.mediaProjectionPermissionResultData
             ?: throw IllegalStateException("MediaProjectionPermissionResult is null")
 
-        val metrics = ServiceControlActivity.metrics
-        val width = metrics.widthPixels / SCREEN_RESOLUTION_SCALE
-        val height = metrics.heightPixels / SCREEN_RESOLUTION_SCALE
+        val metrics = MainActivity.metrics
+        val width = (metrics.widthPixels / SCREEN_RESOLUTION_SCALE).toInt()
+        val height = (metrics.heightPixels / SCREEN_RESOLUTION_SCALE).toInt()
         val fps = 30
-        val dataChannelParameters = PeerConnectionClient.DataChannelParameters(
-            true, 0, 0, "", false, 0
-        )
         val peerConnectionParameters = PeerConnectionClient.PeerConnectionParameters(
-            true, width, height, fps, 0, VIDEO_CODEC, true, true,
-            0, null, true, false, false, false, false, dataChannelParameters
+            true, width, height, SCREEN_RESOLUTION_SCALE, fps, 0, VIDEO_CODEC, true, true,
+            0, null, true, false, false, false, false
         )
 
         peerConnectionClient = PeerConnectionClient(
@@ -196,7 +193,7 @@ class ScreenCaptureService : Service() {
 
         Log.i(TAG, "Creating peer connection, delay=" + delta + "ms")
         val videoCapturer: VideoCapturer = ScreenCapturerAndroid(
-            ServiceControlActivity.mediaProjectionPermissionResultData,
+            MainActivity.mediaProjectionPermissionResultData,
             object : MediaProjection.Callback() {
                 override fun onStop() {
                     reportError("User revoked permission to capture the screen.")

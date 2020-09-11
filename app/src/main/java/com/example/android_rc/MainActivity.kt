@@ -8,19 +8,16 @@ import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.provider.Settings
-import android.util.AttributeSet
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import kotlinx.android.synthetic.main.activity_service_control.*
-import kotlinx.coroutines.delay
+import kotlinx.android.synthetic.main.activity_main.*
 
-class ServiceControlActivity : AppCompatActivity() {
-    private val TAG = ServiceControlActivity::class.java.simpleName
+class MainActivity : AppCompatActivity() {
+    private val TAG = MainActivity::class.java.simpleName
 
     companion object {
         private const val REQUEST_MEDIA_PROJECTION = 1001
@@ -42,14 +39,11 @@ class ServiceControlActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_service_control)
-
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        setContentView(R.layout.activity_main)
+        setSupportActionBar(findViewById(R.id.toolbar))
 
         preferences = Preferences(application)
         preferences.initializeRoomId()
-
-        checkPermissions()
 
         touchEmulationToggleButton.isEnabled = TouchEmulationAccessibilityService.instance == null
         touchEmulationToggleButton.setOnClickListener {
@@ -57,7 +51,7 @@ class ServiceControlActivity : AppCompatActivity() {
             openSettings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_HISTORY)
             startActivity(openSettings)
 
-            showMessage("Please enable the `capture-sender` service.")
+            showMessage("Please enable the `android-rc` service.")
         }
 
         screenCaptureToggleButton.isChecked = !ScreenCaptureService.isActive
@@ -66,13 +60,13 @@ class ServiceControlActivity : AppCompatActivity() {
                 val captureService = Intent(application, ScreenCaptureService::class.java)
                 stopService(captureService)
             } else {
-                requestScreenCapturePermission()
+                if (RuntimePermissionUtils.hasSelfPermissions(this, *MANDATORY_PERMISSIONS)) {
+                    requestScreenCapturePermission()
+                } else {
+                    requestPermissions(MANDATORY_PERMISSIONS, REQUEST_MULTI_PERMISSION)
+                }
             }
         }
-    }
-
-    override fun onCreateView(name: String, context: Context, attrs: AttributeSet): View? {
-        return super.onCreateView(name, context, attrs)
     }
 
     override fun onResume() {
@@ -81,22 +75,7 @@ class ServiceControlActivity : AppCompatActivity() {
         touchEmulationToggleButton.isEnabled = TouchEmulationAccessibilityService.instance == null
         screenCaptureToggleButton.isChecked = !ScreenCaptureService.isActive
         errorMultiLineText.text = ScreenCaptureService.errorDescription.joinToString("\n")
-
-        // TODO
-//        lifecycleScope.launch {
-//            doTouch()
-//        }
     }
-
-    suspend fun doTouch() {
-        delay(3000)
-        TouchEmulationAccessibilityService.instance?.doTouch(550f, 1650f)
-    }
-
-//    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-//        Log.i(TAG, "dispatchTouchEvent: $ev")
-//        return super.dispatchTouchEvent(ev)
-//    }
 
     private fun startCaptureService(intent: Intent) {
         val wsUrl = preferences.wsUrl
@@ -123,32 +102,14 @@ class ServiceControlActivity : AppCompatActivity() {
         startActivity(startMain)
     }
 
-    private fun checkPermissions() {
-        val notGranted = arrayListOf<String>()
-        for (permission in MANDATORY_PERMISSIONS) {
-            if (checkCallingOrSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
-                notGranted.add(permission)
-            }
-        }
-        requestPermissions(notGranted.toTypedArray(), REQUEST_MULTI_PERMISSION)
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
+    override fun onRequestPermissionsResult( requestCode: Int, permissions: Array<out String>, grantResults: IntArray ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
-        if (requestCode == REQUEST_MULTI_PERMISSION) {
-            for (result in grantResults.withIndex()) {
-                if (result.value != PackageManager.PERMISSION_GRANTED) {
-                    val permission = permissions[result.index]
-                    Log.e(TAG, "Not granted the permission: $permission")
-                    setResult(Activity.RESULT_CANCELED)
-                    finish()
-                    return
-                }
+        if (requestCode == REQUEST_MULTI_PERMISSION && grantResults.isNotEmpty()) {
+            if (!RuntimePermissionUtils.checkGrantResults(*grantResults)) {
+                showMessage("Not granted permissions.")
+            } else {
+                requestScreenCapturePermission()
             }
         }
     }
@@ -207,6 +168,6 @@ class ServiceControlActivity : AppCompatActivity() {
     }
 
     private fun showMessage(msg: String) {
-        Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+        Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
     }
 }
