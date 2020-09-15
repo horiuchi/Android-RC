@@ -1,2 +1,4 @@
-# ScreenCaptureSender
-sample project
+# Android-RC
+
+Android Remote Control
+
