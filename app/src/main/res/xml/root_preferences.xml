@@ -4,7 +4,7 @@
     <PreferenceCategory app:title="Connection">
 
         <EditTextPreference
-            android:defaultValue="http://127.0.0.1:5000/signaling"
+            android:defaultValue="wss://0j1sxcggc0.execute-api.ap-northeast-1.amazonaws.com/Dev"
             app:key="WsUrl"
             app:title="Signaling Server URL"
             app:useSimpleSummaryProvider="true" />
